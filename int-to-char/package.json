@@ -1,0 +1,11 @@
+{
+  "name": "int-to-char",
+  "version": "1.0.0",
+  "description": "Test Casting numbers to String-Characters safely",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Johannes Brautzsch",
+  "license": "MIT"
+}
