@@ -9,7 +9,8 @@ const NUMBER_TYPES = {
           'min': -128,
           'max': 127,
           'bytes': 1,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'uint8': {
           'typedArray': (n) => { return new Uint8Array(n); },
@@ -18,7 +19,8 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 255,
           'bytes': 1,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'uint8clamped': {
           'typedArray': (n) => { return new Uint8ClampedArray(n); },
@@ -27,7 +29,8 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 255,
           'bytes': 1,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'int16': {
           'typedArray': (n) => { return new Int16Array(n); },
@@ -36,7 +39,8 @@ const NUMBER_TYPES = {
           'min': -32768,
           'max': 32767,
           'bytes': 2,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'uint16': {
           'typedArray': (n) => { return new Uint16Array(n); },
@@ -45,7 +49,8 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 65535,
           'bytes': 2,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'int32': {
           'typedArray': (n) => { return new Int32Array(n); },
@@ -54,7 +59,8 @@ const NUMBER_TYPES = {
           'min': -2147483648,
           'max': 2147483647,
           'bytes': 4,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'uint32': {
           'typedArray': (n) => { return new Uint32Array(n); },
@@ -63,16 +69,18 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 4294967295,
           'bytes': 4,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       },
       'float32': {
           'typedArray': (n) => { return new Float32Array(n); },
           'setter': DataView.prototype.setFloat32,
           'getter': DataView.prototype.getFloat32,
-          'min': -1*(1-Math.pow(2,-24))*Math.pow(2,128),
-          'max': (1-Math.pow(2,-24))*Math.pow(2,128),
-          'bytes': 8,
-          'pricision': Math.pow(2,-23)
+          'min': -1*(2-Math.pow(2,-23))*Math.pow(2,127),
+          'max': (2-Math.pow(2,-23))*Math.pow(2,127),
+          'bytes': 4,
+          'pricision': 'single',
+          'epsilon': Math.pow(2,-23)
       },
       'float64': {
           'typedArray': (n) => { return new Float64Array(n); },
@@ -81,7 +89,8 @@ const NUMBER_TYPES = {
           'min': -Number.MAX_VALUE,
           'max': Number.MAX_VALUE,
           'bytes': 8,
-          'pricision': Number.EPSILON
+          'pricision': 'double',
+          'epsilon': Number.EPSILON
       },
       'number': {
           'typedArray': (n) => { return new Float64Array(n); },
@@ -90,7 +99,8 @@ const NUMBER_TYPES = {
           'min': -Number.MAX_VALUE,
           'max': Number.MAX_VALUE,
           'bytes': 8,
-          'pricision': Number.EPSILON
+          'pricision': 'double',
+          'epsilon': Number.EPSILON
       },
       'date': { // http://www.ecma-international.org/ecma-262/6.0/#sec-time-values-and-time-range
           'typedArray': (n) => { return new Float64Array(n); },
@@ -99,7 +109,8 @@ const NUMBER_TYPES = {
           'min': -8640000000000000,
           'max': 8640000000000000,
           'bytes': 8,
-          'pricision': 0
+          'pricision': '',
+          'epsilon': 0
       }
   }
 
@@ -163,13 +174,19 @@ function getRandomInt(min, max) {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min)) + min;
 }
+
 function getRandom(min, max, prec) {
-  if (!prec) {
-    min = Math.ceil(min);
-    max = Math.floor(max);
-    return Math.floor(Math.random() * (max - min)) + min;
-  } else {
-    return (Math.random() * (max - min)) + min;
+  switch (prec) {
+    case 'single':
+      return Math.fround((Math.fround(Math.random()) * (Math.fround(max) - Math.fround(min))) + Math.fround(min));
+      break;
+    case 'double':
+      return (Math.random() * (max - min)) + min;
+      break;
+    default:
+      min = Math.ceil(min);
+      max = Math.floor(max);
+      return Math.floor(Math.random() * (max - min)) + min;
   }
 }
 
@@ -208,7 +225,7 @@ for (var j = 0; j < types.length; j++) {
     enc = numberToStr(num, type);
     dec = strToNumber(enc, type);
     if (num !== dec) {
-      console.log('Test failed:', num, dec);
+      console.log('Test failed:', num, dec, num - dec);
       failed++;
     }
     // console.log('num: %d enc: %s back-enc: %d', num, enc, dec);
