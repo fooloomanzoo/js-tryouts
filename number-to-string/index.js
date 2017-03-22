@@ -1,7 +1,27 @@
 // Random Number Test for encoding Float64 to String UTF-16 Characters
 
 // REFERENCE http://www.ecma-international.org/ecma-262/6.0
-const NUMBER_TYPES = {
+const DATA_TYPES = {
+      'bool': {
+          'typedArray': (n) => { return new Int8Array(n); },
+          'setter': DataView.prototype.setInt8,
+          'getter': DataView.prototype.getInt8,
+          'min': 0,
+          'max': 1,
+          'bytes': 1,
+          'precision': 0,
+          'epsilon': 0
+      },
+      'char': { // experimental (for Unicode)
+          'typedArray': (n) => { return new Int8Array(n); },
+          'setter': DataView.prototype.setInt8,
+          'getter': DataView.prototype.getInt8,
+          'min': 0,
+          'max': 127,
+          'bytes': 1,
+          'precision': 0,
+          'epsilon': 0
+      },
       'int8': {
           'typedArray': (n) => { return new Int8Array(n); },
           'setter': DataView.prototype.setInt8,
@@ -115,12 +135,12 @@ const NUMBER_TYPES = {
   }
 
 const ENCRYPTION_TYPES = {
-      'utf8': {
+      'char': {
         'setter': DataView.prototype.setUint8,
         'getter': DataView.prototype.getUint8,
         'bytes': 1
       },
-      'utf16': {
+      'short': {
         'setter': DataView.prototype.setUint16,
         'getter': DataView.prototype.getUint16,
         'bytes': 2
@@ -129,12 +149,12 @@ const ENCRYPTION_TYPES = {
 
 function numberToStr(num, type, enc_type) {
     if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
-      enc_type = 'utf8';
+      enc_type = 'char';
     }
-    let view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes * ENCRYPTION_TYPES[enc_type].bytes) );
-    NUMBER_TYPES[type].setter.call(view, 0, num); // bigEndian
+    let view = new DataView( new ArrayBuffer( DATA_TYPES[type].bytes * ENCRYPTION_TYPES[enc_type].bytes) );
+    DATA_TYPES[type].setter.call(view, 0, num); // bigEndian
     let b = '';
-    for ( let i = 0; i < NUMBER_TYPES[type].bytes; i += ENCRYPTION_TYPES[enc_type].bytes ) {
+    for ( let i = 0; i < DATA_TYPES[type].bytes; i += ENCRYPTION_TYPES[enc_type].bytes ) {
         // console.log(view.getUint8(i));
         b += String.fromCharCode( ENCRYPTION_TYPES[enc_type].getter.call(view, i) );
         //console.log(b.codePointAt(i));
@@ -144,22 +164,22 @@ function numberToStr(num, type, enc_type) {
 
 function strToNumber(s, type, enc_type) {
     if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
-      enc_type = 'utf8';
+      enc_type = 'char';
     }
-    let view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes ) );
-    for (let i = 0; i < NUMBER_TYPES[type].bytes / ENCRYPTION_TYPES[enc_type].bytes; i++) {
+    let view = new DataView( new ArrayBuffer( DATA_TYPES[type].bytes ) );
+    for (let i = 0; i < DATA_TYPES[type].bytes / ENCRYPTION_TYPES[enc_type].bytes; i++) {
         // re-convert the characters into bytes.
         ENCRYPTION_TYPES[enc_type].setter.call(view, i*ENCRYPTION_TYPES[enc_type].bytes, s.charCodeAt(i) );
     }
-    return NUMBER_TYPES[type].getter.call(view, 0); // bigEndian
+    return DATA_TYPES[type].getter.call(view, 0); // bigEndian
 };
 
 function strToNumberSet(s, types, enc_type) {
     if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
-      enc_type = 'utf8';
+      enc_type = 'char';
     }
     if (!Array.isArray(types)) {
-      if (types && NUMBER_TYPES[types]) {
+      if (types && DATA_TYPES[types]) {
         types = [types];
       } else {
         types = ['float64']
@@ -169,8 +189,8 @@ function strToNumberSet(s, types, enc_type) {
     let max_byte_length = enc_byte_length;
     let valid_types = [];
     for (let i = 0; i < types.length; i++) {
-      if (NUMBER_TYPES[types[i]]) {
-        max_byte_length = Math.max(max_byte_length, NUMBER_TYPES[types[i]].bytes);
+      if (DATA_TYPES[types[i]]) {
+        max_byte_length = Math.max(max_byte_length, DATA_TYPES[types[i]].bytes);
         valid_types.push(types[i]);
       } else {
         console.warn(`Invalid Number-Type: \"${types[i]}\"`)
@@ -189,13 +209,13 @@ function strToNumberSet(s, types, enc_type) {
     while (i < s.length) {
       ret.push([]);
       for (j = 0; j < types.length; j++) {
-        for (k = 0; k < NUMBER_TYPES[types[j]].bytes; k+=enc_byte_length) {
+        for (k = 0; k < DATA_TYPES[types[j]].bytes; k+=enc_byte_length) {
             // re-convert the characters into bytes.
             // console.log(i,j,k, s.charCodeAt(i));
             ENCRYPTION_TYPES[enc_type].setter.call(tmp_view, k, s.charCodeAt(i) );
             i++;
         }
-        ret[l].push( NUMBER_TYPES[types[j]].getter.call(tmp_view, 0) ); // bigEndian
+        ret[l].push( DATA_TYPES[types[j]].getter.call(tmp_view, 0) ); // bigEndian
       }
       l++;
     }
@@ -204,7 +224,7 @@ function strToNumberSet(s, types, enc_type) {
 };
 
 function getBinarySize(s) {
-    return Buffer.byteLength(s, 'utf8');
+    return Buffer.byteLength(s, 'char');
 }
 
 function getRandomInt(min, max) {
@@ -240,7 +260,7 @@ let num, enc, enc16, dec, failed, type, number_type, N;
 //   dec = '';
 //   failed = 0;
 //   type = types[j];
-//   number_type = NUMBER_TYPES[type];
+//   number_type = DATA_TYPES[type];
 //
 //   for (let i = 0; i < N; i++) {
 //     num = getRandom(number_type.min, number_type.max, number_type.precision);
@@ -258,12 +278,12 @@ let num, enc, enc16, dec, failed, type, number_type, N;
 //
 // // --------------------------- ENCODING FLOAT32 NUMBERS ---------------------------
 // type = 'float32';
-// number_type = NUMBER_TYPES[type];
+// number_type = DATA_TYPES[type];
 // num = getRandom(10, 1000, 1);
 //
 // enc = '';
 // dec = '';
-// enc_type = 'utf8';
+// enc_type = 'char';
 // failed = 0;
 //
 // enc = numberToStr(num, type, enc_type);
@@ -277,7 +297,7 @@ let num, enc, enc16, dec, failed, type, number_type, N;
 //
 // enc = '';
 // dec = '';
-// enc_type = 'utf16';
+// enc_type = 'short';
 // failed = 0;
 //
 // enc = numberToStr(num, type, enc_type);
@@ -301,8 +321,8 @@ let num, enc, enc16, dec, failed, type, number_type, N;
 
 let M = 1000;
 const EXPECTED_FORMAT = ['date', 'float32', 'int8'];
-const EXPECTED_FORMAT_MAX_LOWER_BOUNDERY = EXPECTED_FORMAT.map( (v) => { return NUMBER_TYPES[v].max / 2; });
-const EXPECTED_FORMAT_MAX_UPPER_BOUNDERY= EXPECTED_FORMAT.map( (v) => { return NUMBER_TYPES[v].max; });
+const EXPECTED_FORMAT_MAX_LOWER_BOUNDERY = EXPECTED_FORMAT.map( (v) => { return DATA_TYPES[v].max / 2; });
+const EXPECTED_FORMAT_MAX_UPPER_BOUNDERY= EXPECTED_FORMAT.map( (v) => { return DATA_TYPES[v].max; });
 const EXPECTED_FORMAT_MIN_LOWER_BOUNDERY = [ (new Date()).valueOf(), 0, -1 ];
 const EXPECTED_FORMAT_MIN_UPPER_BOUNDERY= [ (new Date()).valueOf() + 60*1000, 1, 1 ]
 
@@ -315,18 +335,18 @@ const EXPECTED_FORMAT_MIN_UPPER_BOUNDERY= [ (new Date()).valueOf() + 60*1000, 1,
 // for (let i = 0; i < M; i++) {
 //   asJson.push([]);
 //   for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
-//     num = getRandom(EXPECTED_FORMAT_MAX_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MAX_UPPER_BOUNDERY[j], NUMBER_TYPES[EXPECTED_FORMAT[j]].precision);
-//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'utf8');
-//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'utf16');
+//     num = getRandom(EXPECTED_FORMAT_MAX_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MAX_UPPER_BOUNDERY[j], DATA_TYPES[EXPECTED_FORMAT[j]].precision);
+//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'char');
+//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'short');
 //     csv.push(num);
 //     asJson[i].push(num);
 //   }
 // }
 //
 // console.log(`\nMax-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
-// console.log('Mixed-Byte-Length-Character-String-Buffer UTF8: ', getBinarySize(enc) );
+// console.log('Mixed-Byte-Length-Character-String-Buffer CHAR: ', getBinarySize(enc) );
 // // console.log(enc);
-// console.log('Mixed-Byte-Length-Character-String-Buffer UTF16:', getBinarySize(enc16) );
+// console.log('Mixed-Byte-Length-Character-String-Buffer SHORT:', getBinarySize(enc16) );
 // // console.log(enc16);
 // console.log('CSV-String:', getBinarySize(csv.join(';')) );
 // // console.log(csv.join(';'));
@@ -342,18 +362,18 @@ const EXPECTED_FORMAT_MIN_UPPER_BOUNDERY= [ (new Date()).valueOf() + 60*1000, 1,
 // for (let i = 0; i < M; i++) {
 //   asJson.push([]);
 //   for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
-//     num = getRandom(EXPECTED_FORMAT_MIN_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MIN_UPPER_BOUNDERY[j], NUMBER_TYPES[EXPECTED_FORMAT[j]].precision);
-//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'utf8');
-//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'utf16');
+//     num = getRandom(EXPECTED_FORMAT_MIN_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MIN_UPPER_BOUNDERY[j], DATA_TYPES[EXPECTED_FORMAT[j]].precision);
+//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'char');
+//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'short');
 //     csv.push(num);
 //     asJson[i].push(num);
 //   }
 // }
 //
 // console.log(`\nMin-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
-// console.log('Mixed-Byte-Length-Character-String-Buffer UTF8: ', getBinarySize(enc) );
+// console.log('Mixed-Byte-Length-Character-String-Buffer CHAR: ', getBinarySize(enc) );
 // // console.log(enc);
-// console.log('Mixed-Byte-Length-Character-String-Buffer UTF16:', getBinarySize(enc16) );
+// console.log('Mixed-Byte-Length-Character-String-Buffer SHORT:', getBinarySize(enc16) );
 // // console.log(enc16);
 // console.log('CSV-String:', getBinarySize(csv.join(';')) );
 // // console.log(csv.join(';'));
@@ -363,7 +383,7 @@ const EXPECTED_FORMAT_MIN_UPPER_BOUNDERY= [ (new Date()).valueOf() + 60*1000, 1,
 
 // --------------------------- Mult-Value Encoding-Decoding ---------------------------
 M = 100000;
-enc_type = 'utf8';
+enc_type = 'char';
 
 enc = '';
 num = [];
@@ -374,9 +394,9 @@ for (let i = 0; i < M; i++) {
   num.push([]);
   for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
     num[i].push( getRandom(
-        NUMBER_TYPES[EXPECTED_FORMAT[j]].min
-      , NUMBER_TYPES[EXPECTED_FORMAT[j]].max
-      , NUMBER_TYPES[EXPECTED_FORMAT[j]].precision ) );
+        DATA_TYPES[EXPECTED_FORMAT[j]].min
+      , DATA_TYPES[EXPECTED_FORMAT[j]].max
+      , DATA_TYPES[EXPECTED_FORMAT[j]].precision ) );
     enc += numberToStr(num[i][j], EXPECTED_FORMAT[j], enc_type);
   }
 }
