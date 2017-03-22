@@ -9,7 +9,7 @@ const NUMBER_TYPES = {
           'min': -128,
           'max': 127,
           'bytes': 1,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'uint8': {
@@ -19,7 +19,7 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 255,
           'bytes': 1,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'uint8clamped': {
@@ -29,7 +29,7 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 255,
           'bytes': 1,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'int16': {
@@ -39,7 +39,7 @@ const NUMBER_TYPES = {
           'min': -32768,
           'max': 32767,
           'bytes': 2,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'uint16': {
@@ -49,7 +49,7 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 65535,
           'bytes': 2,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'int32': {
@@ -59,7 +59,7 @@ const NUMBER_TYPES = {
           'min': -2147483648,
           'max': 2147483647,
           'bytes': 4,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'uint32': {
@@ -69,7 +69,7 @@ const NUMBER_TYPES = {
           'min': 0,
           'max': 4294967295,
           'bytes': 4,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       },
       'float32': {
@@ -79,7 +79,7 @@ const NUMBER_TYPES = {
           'min': -1*(2-Math.pow(2,-23))*Math.pow(2,127),
           'max': (2-Math.pow(2,-23))*Math.pow(2,127),
           'bytes': 4,
-          'pricision': 'single',
+          'precision': 1, // single
           'epsilon': Math.pow(2,-23)
       },
       'float64': {
@@ -89,7 +89,7 @@ const NUMBER_TYPES = {
           'min': -Number.MAX_VALUE,
           'max': Number.MAX_VALUE,
           'bytes': 8,
-          'pricision': 'double',
+          'precision': 2, // double
           'epsilon': Number.EPSILON
       },
       'number': {
@@ -99,7 +99,7 @@ const NUMBER_TYPES = {
           'min': -Number.MAX_VALUE,
           'max': Number.MAX_VALUE,
           'bytes': 8,
-          'pricision': 'double',
+          'precision': 2, // double
           'epsilon': Number.EPSILON
       },
       'date': { // http://www.ecma-international.org/ecma-262/6.0/#sec-time-values-and-time-range
@@ -109,60 +109,98 @@ const NUMBER_TYPES = {
           'min': -8640000000000000,
           'max': 8640000000000000,
           'bytes': 8,
-          'pricision': '',
+          'precision': 0,
           'epsilon': 0
       }
   }
 
-function float64ToStr(num) {
-    var view = new DataView( new ArrayBuffer(8) );
-    view.setFloat64(0, num); // bigEndian
-    var b = '';
-    for ( var i = 0; i < 8; i++ ) {
-        b += String.fromCharCode( view.getUint8(i) );
-    }
-    return b;
-};
+const ENCRYPTION_TYPES = {
+      'utf8': {
+        'setter': DataView.prototype.setUint8,
+        'getter': DataView.prototype.getUint8,
+        'bytes': 1
+      },
+      'utf16': {
+        'setter': DataView.prototype.setUint16,
+        'getter': DataView.prototype.getUint16,
+        'bytes': 2
+      }
+  }
 
-function float32ToStr(num) {
-    var view = new DataView( new ArrayBuffer(4) );
-    view.setFloat32(0, num); // bigEndian
-    var b = '';
-    for ( var i = 0; i < 4; i++ ) {
-        b += String.fromCharCode( view.getUint8(i) );
+function numberToStr(num, type, enc_type) {
+    if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
+      enc_type = 'utf8';
     }
-    return b;
-};
-
-function numberToStr(num, type) {
-    var view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes ) );
+    let view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes * ENCRYPTION_TYPES[enc_type].bytes) );
     NUMBER_TYPES[type].setter.call(view, 0, num); // bigEndian
-    var b = '';
-    for ( var i = 0; i < NUMBER_TYPES[type].bytes; i++ ) {
+    let b = '';
+    for ( let i = 0; i < NUMBER_TYPES[type].bytes; i += ENCRYPTION_TYPES[enc_type].bytes ) {
         // console.log(view.getUint8(i));
-        b += String.fromCharCode( view.getUint8(i) );
+        b += String.fromCharCode( ENCRYPTION_TYPES[enc_type].getter.call(view, i) );
+        //console.log(b.codePointAt(i));
     }
     return b;
 };
 
-function strToFloat64(s) {
-    var view = new DataView( new ArrayBuffer(8) );
-    for (var i = 0; i < 8; i++) {
-        // re-convert the characters into bytes.
-        // console.log(s[i].charCodeAt());
-        view.setUint8( i, s[i].charCodeAt() );
+function strToNumber(s, type, enc_type) {
+    if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
+      enc_type = 'utf8';
     }
-    return view.getFloat64(0); // bigEndian
-};
-
-function strToNumber(s, type) {
-    var view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes ) );
-    for (var i = 0; i < NUMBER_TYPES[type].bytes; i++) {
+    let view = new DataView( new ArrayBuffer( NUMBER_TYPES[type].bytes ) );
+    for (let i = 0; i < NUMBER_TYPES[type].bytes / ENCRYPTION_TYPES[enc_type].bytes; i++) {
         // re-convert the characters into bytes.
-        // console.log(s[i].charCodeAt());
-        view.setUint8( i, s[i].charCodeAt() );
+        ENCRYPTION_TYPES[enc_type].setter.call(view, i*ENCRYPTION_TYPES[enc_type].bytes, s.charCodeAt(i) );
     }
     return NUMBER_TYPES[type].getter.call(view, 0); // bigEndian
+};
+
+function strToNumberSet(s, types, enc_type) {
+    if (!enc_type || !ENCRYPTION_TYPES[enc_type]) {
+      enc_type = 'utf8';
+    }
+    if (!Array.isArray(types)) {
+      if (types && NUMBER_TYPES[types]) {
+        types = [types];
+      } else {
+        types = ['float64']
+      }
+    }
+    let enc_byte_length = ENCRYPTION_TYPES[enc_type].bytes;
+    let max_byte_length = enc_byte_length;
+    let valid_types = [];
+    for (let i = 0; i < types.length; i++) {
+      if (NUMBER_TYPES[types[i]]) {
+        max_byte_length = Math.max(max_byte_length, NUMBER_TYPES[types[i]].bytes);
+        valid_types.push(types[i]);
+      } else {
+        console.warn(`Invalid Number-Type: \"${types[i]}\"`)
+      }
+    }
+    types = valid_types;
+    valid_types = null;
+
+    let ret = [];
+    let tmp_view = new DataView( new ArrayBuffer( max_byte_length ) );
+
+    let l = 0; // l: number of the actual decoded set of values
+    let i = 0; // i: start in string of the actual set of values
+    let j = 0; // j: actual decoded value
+    let k = 0; // k: inner byte-position in actual decoded value
+    while (i < s.length) {
+      ret.push([]);
+      for (j = 0; j < types.length; j++) {
+        for (k = 0; k < NUMBER_TYPES[types[j]].bytes; k+=enc_byte_length) {
+            // re-convert the characters into bytes.
+            // console.log(i,j,k, s.charCodeAt(i));
+            ENCRYPTION_TYPES[enc_type].setter.call(tmp_view, k, s.charCodeAt(i) );
+            i++;
+        }
+        ret[l].push( NUMBER_TYPES[types[j]].getter.call(tmp_view, 0) ); // bigEndian
+      }
+      l++;
+    }
+
+    return ret;
 };
 
 function getBinarySize(s) {
@@ -177,10 +215,11 @@ function getRandomInt(min, max) {
 
 function getRandom(min, max, prec) {
   switch (prec) {
-    case 'single':
-      return Math.fround((Math.fround(Math.random()) * (Math.fround(max) - Math.fround(min))) + Math.fround(min));
+    case 1:
+      let r = (Math.random() * (max - min)) + min;
+      return Math.fround(r);
       break;
-    case 'double':
+    case 2:
       return (Math.random() * (max - min)) + min;
       break;
     default:
@@ -190,125 +229,175 @@ function getRandom(min, max, prec) {
   }
 }
 
-const N = 100000;
-var num, enc, dec, failed, type, number_type;
+let num, enc, enc16, dec, failed, type, number_type, N;
 
+// // --------------------------- ENCODING DECODING NUMBERS ---------------------------
+// let types = ['int8', 'uint8', 'uint8clamped', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64', 'number', 'date'];
+//
+// for (let j = 0; j < types.length; j++) {
+//   N = 100000;
+//   enc = '';
+//   dec = '';
+//   failed = 0;
+//   type = types[j];
+//   number_type = NUMBER_TYPES[type];
+//
+//   for (let i = 0; i < N; i++) {
+//     num = getRandom(number_type.min, number_type.max, number_type.precision);
+//     enc = numberToStr(num, type);
+//     dec = strToNumber(enc, type);
+//     if (num !== dec) {
+//       // console.log('Test failed:', num, dec, num - dec);
+//       failed++;
+//     }
+//     // console.log('num: %d enc: %s back-enc: %d', num, enc, dec);
+//   }
+//   console.log(`\nEncoding-Decoding-Test with type \"${type}\"`, failed ? `failed (${failed}x)` : 'successful');
+// }
+//
+//
+// // --------------------------- ENCODING FLOAT32 NUMBERS ---------------------------
+// type = 'float32';
+// number_type = NUMBER_TYPES[type];
+// num = getRandom(10, 1000, 1);
+//
 // enc = '';
 // dec = '';
-// // --------------------------- RANDOM NUMBERS ---------------------------
+// enc_type = 'utf8';
 // failed = 0;
 //
-// for (var i = 0; i < N; i++) {
-//   num = getRandom(-Number.MAX_VALUE, Number.MAX_VALUE);
-//   enc = float64ToStr(num);
-//   dec = strToFloat64(enc);
-//   if (num !== dec) {
-//     console.log('Test failed:', i, dec);
-//     failed++;
-//   }
-//   // console.log('num: %d enc: %s back-enc: %d', num, enc, dec);
+// enc = numberToStr(num, type, enc_type);
+// dec = strToNumber(enc, type, enc_type);
+// console.log('\n', num, num.toString(16), enc, enc.toString(16), dec, dec.toString(16));
+// if (num !== dec) {
+//   console.log('Test failed:', num, dec, num - dec);
+//   failed++;
 // }
-
-
-// --------------------------- ENCODING DECODING NUMBERS ---------------------------
-var types = ['int8', 'uint8', 'uint8clamped', 'int16', 'uint16', 'int32', 'uint32', 'float32', 'float64', 'number', 'date'];
-
-for (var j = 0; j < types.length; j++) {
-  enc = '';
-  dec = '';
-  failed = 0;
-  type = types[j];
-  number_type = NUMBER_TYPES[type];
-
-  for (var i = 0; i < N; i++) {
-    num = getRandom(number_type.min, number_type.max, number_type.precision);
-    enc = numberToStr(num, type);
-    dec = strToNumber(enc, type);
-    if (num !== dec) {
-      console.log('Test failed:', num, dec, num - dec);
-      failed++;
-    }
-    // console.log('num: %d enc: %s back-enc: %d', num, enc, dec);
-  }
-  console.log(`\nEncoding-Decoding-Test with type \"${type}\"`, failed ? `failed (${failed}x)` : 'successful');
-}
-
-
-
-// --------------------------- CONTROL CHARS (0 - 33) ---------------------------
-for (var i = 0; i < 33; i++) {
-  if (i !== String.fromCharCode(i).charCodeAt()) {
-    console.log('Impossible to Encode for Char-Code', i);
-  }
-}
+// console.log(`\nEncoding-Decoding-Test with type \"${type}\" in \"${enc_type}\"`, failed ? `failed` : 'successful');
+//
+// enc = '';
+// dec = '';
+// enc_type = 'utf16';
+// failed = 0;
+//
+// enc = numberToStr(num, type, enc_type);
+// dec = strToNumber(enc, type, enc_type);
+// console.log('\n', num, num.toString(16), enc, enc.toString(16), dec, dec.toString(16));
+// if (num !== dec) {
+//   console.log('Test failed:', num, dec, num - dec);
+//   failed++;
+// }
+// console.log(`Encoding-Decoding-Test with type \"${type}\" in \"${enc_type}\"`, failed ? `failed` : 'successful');
+//
+//
+// // --------------------------- CONTROL CHARS (0 - 33) ---------------------------
+// for (let i = 0; i < 33; i++) {
+//   if (i !== String.fromCharCode(i).charCodeAt()) {
+//     console.log('Impossible to Encode for Char-Code', i);
+//   }
+// }
 
 // --------------------------- Byte-Length in UTF-8 ---------------------------
 
-const M = 1000;
+let M = 1000;
 const EXPECTED_FORMAT = ['date', 'float32', 'int8'];
 const EXPECTED_FORMAT_MAX_LOWER_BOUNDERY = EXPECTED_FORMAT.map( (v) => { return NUMBER_TYPES[v].max / 2; });
 const EXPECTED_FORMAT_MAX_UPPER_BOUNDERY= EXPECTED_FORMAT.map( (v) => { return NUMBER_TYPES[v].max; });
 const EXPECTED_FORMAT_MIN_LOWER_BOUNDERY = [ (new Date()).valueOf(), 0, -1 ];
 const EXPECTED_FORMAT_MIN_UPPER_BOUNDERY= [ (new Date()).valueOf() + 60*1000, 1, 1 ]
 
-// --------------------------- Min-Byte-Length in UTF-8 ---------------------------
-var enc = '';
-var enc32 = '';
-var enc64 = '';
-var csv = [];
-var asJson = [];
+// // --------------------------- Max-Byte-Length in UTF-8 ---------------------------
+// enc = '';
+// enc16 = '';
+// csv = [];
+// asJson = [];
+//
+// for (let i = 0; i < M; i++) {
+//   asJson.push([]);
+//   for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
+//     num = getRandom(EXPECTED_FORMAT_MAX_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MAX_UPPER_BOUNDERY[j], NUMBER_TYPES[EXPECTED_FORMAT[j]].precision);
+//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'utf8');
+//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'utf16');
+//     csv.push(num);
+//     asJson[i].push(num);
+//   }
+// }
+//
+// console.log(`\nMax-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
+// console.log('Mixed-Byte-Length-Character-String-Buffer UTF8: ', getBinarySize(enc) );
+// // console.log(enc);
+// console.log('Mixed-Byte-Length-Character-String-Buffer UTF16:', getBinarySize(enc16) );
+// // console.log(enc16);
+// console.log('CSV-String:', getBinarySize(csv.join(';')) );
+// // console.log(csv.join(';'));
+// console.log('JSON-String:', getBinarySize( JSON.stringify(asJson) ) );
+// // console.log(JSON.stringify(asJson));
+//
+// // --------------------------- Min-Byte-Length in UTF-8 ---------------------------
+// enc = '';
+// enc16 = '';
+// csv = [];
+// asJson = [];
+//
+// for (let i = 0; i < M; i++) {
+//   asJson.push([]);
+//   for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
+//     num = getRandom(EXPECTED_FORMAT_MIN_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MIN_UPPER_BOUNDERY[j], NUMBER_TYPES[EXPECTED_FORMAT[j]].precision);
+//     enc += numberToStr(num, EXPECTED_FORMAT[j], 'utf8');
+//     enc16 += numberToStr(num, EXPECTED_FORMAT[j], 'utf16');
+//     csv.push(num);
+//     asJson[i].push(num);
+//   }
+// }
+//
+// console.log(`\nMin-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
+// console.log('Mixed-Byte-Length-Character-String-Buffer UTF8: ', getBinarySize(enc) );
+// // console.log(enc);
+// console.log('Mixed-Byte-Length-Character-String-Buffer UTF16:', getBinarySize(enc16) );
+// // console.log(enc16);
+// console.log('CSV-String:', getBinarySize(csv.join(';')) );
+// // console.log(csv.join(';'));
+// console.log('JSON-String:', getBinarySize( JSON.stringify(asJson) ) );
+// // console.log(JSON.stringify(asJson));
 
-for (var i = 0; i < M; i++) {
-  asJson.push({});
-  for (var j = 0; j < EXPECTED_FORMAT.length; j++) {
-    num = getRandomInt(EXPECTED_FORMAT_MAX_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MAX_UPPER_BOUNDERY[j]);
-    enc += numberToStr(num, EXPECTED_FORMAT[j]);
-    enc32 += float32ToStr(num);
-    enc64 += float64ToStr(num);
-    csv.push(num);
-    asJson[i][j] = num;
+
+// --------------------------- Mult-Value Encoding-Decoding ---------------------------
+M = 100000;
+enc_type = 'utf8';
+
+enc = '';
+num = [];
+dec = [];
+failed = 0;
+
+for (let i = 0; i < M; i++) {
+  num.push([]);
+  for (let j = 0; j < EXPECTED_FORMAT.length; j++) {
+    num[i].push( getRandom(
+        NUMBER_TYPES[EXPECTED_FORMAT[j]].min
+      , NUMBER_TYPES[EXPECTED_FORMAT[j]].max
+      , NUMBER_TYPES[EXPECTED_FORMAT[j]].precision ) );
+    enc += numberToStr(num[i][j], EXPECTED_FORMAT[j], enc_type);
+  }
+}
+dec = strToNumberSet(enc, EXPECTED_FORMAT, enc_type);
+
+for (let i = 0; i < num.length; i++) {
+  if (!dec[i]) {
+    console.log(`Missing value-set at ${i}: ${num[i]}`);
+  }
+  for (let j = 0; j < num[i].length; j++) {
+    if (Number.isNaN(dec[i][j])) {
+      console.log(`Missing value in set at ${i} ${j}: ${dec[i]}`);
+      failed++;
+    } else if (num[i][j] !== dec[i][j]) {
+      console.log(`Encoding value in set at ${i} ${j} failed: ${num[i][j]} !== ${dec[i][j]}`);
+      failed++;
+    }
   }
 }
 
-console.log(`\nMax-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
-console.log('Mixed-Byte-Length-Character-String-Buffer:', getBinarySize(enc) );
-// console.log(enc);
-console.log('Float32-Character-String-Buffer:', getBinarySize(enc32) );
-// console.log(enc32);
-console.log('Float64-Character-String-Buffer:', getBinarySize(enc64) );
-// console.log(enc64);
-console.log('CSV-String:', getBinarySize(csv.join(';')) );
-// console.log(csv.join(';'));
-console.log('JSON-String:', getBinarySize( JSON.stringify(asJson) ) );
-// console.log(JSON.stringify(asJson));
-
-// --------------------------- Min-Byte-Length in UTF-8 ---------------------------
-var enc = '';
-var enc32 = '';
-var enc64 = '';
-var csv = [];
-var asJson = [];
-
-for (var i = 0; i < M; i++) {
-  asJson.push({});
-  for (var j = 0; j < EXPECTED_FORMAT.length; j++) {
-    num = getRandomInt(EXPECTED_FORMAT_MIN_LOWER_BOUNDERY[j], EXPECTED_FORMAT_MIN_UPPER_BOUNDERY[j], NUMBER_TYPES[EXPECTED_FORMAT[j]].precision);
-    enc += numberToStr(num, EXPECTED_FORMAT[j]);
-    enc32 += float32ToStr(num);
-    enc64 += float64ToStr(num);
-    csv.push(num);
-    asJson[i][j] = num;
-  }
-}
-
-console.log(`\nMax-Byte-Length for ${M}-Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')} when in:\n`);
-console.log('Mixed-Byte-Length-Character-String-Buffer:', getBinarySize(enc) );
-// console.log(enc);
-console.log('Float32-Character-String-Buffer:', getBinarySize(enc32) );
-// console.log(enc32);
-console.log('Float64-Character-String-Buffer:', getBinarySize(enc64) );
-// console.log(enc64);
-console.log('CSV-String:', getBinarySize(csv.join(';')) );
-// console.log(csv.join(';'));
-console.log('JSON-String:', getBinarySize( JSON.stringify(asJson) ) );
-// console.log(JSON.stringify(asJson));
+console.log(`\nEncoding-Decoding Set of ${M} Multi-Values in Expected Format ${EXPECTED_FORMAT.join(',')}`, failed ? `failed` : 'successful');
+console.log('Length of Encoded String: ', enc.length );
+console.log('Binary Size of Encoded String: ', getBinarySize(enc), 'Byte', '(', getBinarySize(enc)/M,'Bytes/Set)' );
+console.log('Binary Size of Object: ', getBinarySize(JSON.stringify(num)), 'Byte', '(', getBinarySize(JSON.stringify(num))/M,'Bytes/Set)' );
