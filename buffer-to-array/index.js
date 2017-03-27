@@ -200,7 +200,7 @@ function arrayToBuffer(array, types) {
 
     while (offset < buf_byte_length) {
       for (col = 0; col < setter.length; col++) {
-        setter[col].call( tmp_view, offset, array[row][col] );
+        setter[col].apply(tmp_view, offset, array[row][col] );
         offset += seq_byte_order[col];
       }
       row++;
@@ -208,9 +208,13 @@ function arrayToBuffer(array, types) {
     return buffer;
 };
 
+function sequenceToArray(start, end, view, seqTypeSetters) {
+
+}
+
 // ******************** TEST: BUFFER RO ARRAY *********************
 const PackageSize = 1024*1024;
-var types = ['float32', 'int16', 'float64'];
+var types = ['float32', 'int16', 'float64', 'bool'];
 
 let seq_byte_length = 0;
 let seq_byte_order = [];
@@ -225,27 +229,31 @@ for (let i = 0; i < types.length; i++) {
   }
 }
 
-let buf_byte_length = Math.floor(PackageSize/seq_byte_length)*seq_byte_length + PackageSize % seq_byte_length;
+let buf_byte_length = Math.ceil(PackageSize/seq_byte_length)*seq_byte_length;
 let buffer = new ArrayBuffer( buf_byte_length );
 let tmp_view = new DataView( buffer );
 let offset = 0;
 let row = 0;
 let col = 0;
 
-console.log(PackageSize, buf_byte_length, seq_byte_length, seq_byte_order);
+console.log(buf_byte_length, PackageSize,seq_byte_length, PackageSize/seq_byte_length,PackageSize%seq_byte_length, seq_byte_order);
+
+let val = 0;
+
 while (offset < buf_byte_length) {
   // console.log(offset);
   for (col = 0; col < setter.length; col++) {
-    setter[col].call( tmp_view, offset, Math.random()*1000000 );
+    setter[col].call( tmp_view, offset, val );
     offset += seq_byte_order[col];
   }
+  val += Math.PI;
   row++;
 }
 
 time_start = process.hrtime();
 let arr = bufferToArray(buffer, types);
 time_diff = process.hrtime(time_start);
-console.log(time_diff);
+console.log(time_diff, arr.length);
 
 // var arr = [ [2.4, 1, 7.4], [1, 2.9, 5.44], [7.8, 32865, 2.11] ];
 //
