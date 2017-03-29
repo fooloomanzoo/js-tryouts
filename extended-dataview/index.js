@@ -5,12 +5,12 @@ Number.prototype.rclamp = function(min, max) {
 const DATA_TYPES = {
     'bool': {
         typedArray: (n) => { return new Int8Array(n); },
-        set: DataView.prototype.setInt8,
-        get: DataView.prototype.getInt8,
+        set: function(byteOffset, value) { DataView.prototype.setInt8.call(this, byteOffset, value ? 1 : 0); },
+        get: function(byteOffset) { return DataView.prototype.getInt8.call(this, byteOffset) ? true : false },
+        clamp: function(v) { return v ? true : false; },
         min: 0,
         max: 1,
         bytes: 1,
-        clamp: function(v) { return v ? true : false; },
         epsilon: 0
     },
     'char': { // experimental (for Unicode)
@@ -148,22 +148,23 @@ class ExtendedDataView extends DataView {
     }
   }
 
-  toArray() {
+  toArray() { // using map-function
     let offset = 0;
     let row = 0;
     let col = 0;
     let ret = [];
-    console.log(this.sequenceByteOrder);
+    let seqLast = this.sequenceByteOrder.length - 1;
     while (offset < this.byteLength) {
       ret.push( this.getter.map( (g, i) => {
         // console.log(i, this.byteLength, offset, offset + this.sequenceByteOrder[i]);
         return g.call(this, offset += this.sequenceByteOrder[i]);
       } ) );
-      offset += this.sequenceByteOrder[4];
+      offset += this.sequenceByteOrder[seqLast];
     }
     return ret;
   }
-  toArray2() {
+
+  toArray2() { // using loops
     let offset = 0;
     let row = 0;
     let col = 0;
@@ -173,17 +174,62 @@ class ExtendedDataView extends DataView {
       ret.push([]);
       for (col = 0; col < this.getter.length; col++) {
         // console.log(col, this.byteLength, offset, offset + this.sequenceByteOrder[col]);
-        offset += this.sequenceByteOrder[col];
         ret[row].push( this.getter[col].call(tmp_view, offset) );
+        offset += this.sequenceByteOrder[col + 1];
       }
-
-      offset += this.sequenceByteOrder[4];
       row++;
     }
     return ret;
   }
+
+  toArray3(buffer, byteOffset, byteLength) { // using non-extended properties
+    let ret = [];
+    let length = byteLength || buffer.byteLength;
+
+    for (var offset = 0; offset < length; offset += this.sequenceByteLength) {
+      ret.push( this.splitSequence(buffer, offset, this.sequenceByteLength) );
+    }
+    return ret;
+  }
+
+  splitSequence(buffer, byteOffset, byteLength) {
+    let tmp_view = new DataView(buffer, byteOffset, byteLength);
+    let ret = [];
+    let offset = 0;
+    for (col = 0; col < this.getter.length; col++) {
+      // console.log(col, this.byteLength, offset, offset + this.sequenceByteOrder[col]);
+      ret.push( this.getter[col].call(tmp_view, offset) );
+      offset += this.sequenceByteOrder[col + 1];
+    }
+    return ret;
+  }
+
+  toArray4(buffer, byteOffset, byteLength) { // using static split functions
+    let ret = [];
+    let length = byteLength || buffer.byteLength;
+    let tmp_view = new DataView(buffer, byteOffset, byteLength);
+    let splitFn = this.getSplitSequenceFn(tmp_view, this.getter, this.sequenceByteOrder);
+    for (var offset = 0; offset < length; offset += this.sequenceByteLength) {
+      ret.push( splitFn(offset) );
+    }
+    return ret;
+  }
+
+  getSplitSequenceFn(view, getter, byteOrder) { // build a static scope
+    return function(offset) {
+      var ret = [];
+      for (var col = 0; col < getter.length; col++) {
+        // console.log(col, this.byteLength, offset, offset + this.sequenceByteOrder[col]);
+        ret.push( getter[col].call(view, offset) );
+        offset += byteOrder[col + 1];
+      }
+      return ret;
+    }
+  }
 }
-function bufferToArray(buffer, types) {
+
+// Non-Object
+function bufferToArray(buffer, types, byteOffset, byteLength) {
     if (!Array.isArray(types)) {
       if (types && DATA_TYPES[types]) {
         types = [types];
@@ -191,7 +237,7 @@ function bufferToArray(buffer, types) {
         types = ['float64']
       }
     }
-    let buf_byte_length = buffer.byteLength;
+    let buf_byte_length = byteLength || buffer.byteLength;
     let seq_byte_length = 0;
     let seq_byte_order = [];
     let getter = [];
@@ -208,7 +254,7 @@ function bufferToArray(buffer, types) {
     let offset = 0;
     let row = 0;
     let col = 0;
-    let tmp_view = new DataView( buffer );
+    const tmp_view = new DataView( buffer, byteOffset, byteLength );
     let ret = [];
 
     while (offset < buf_byte_length) {
@@ -221,9 +267,32 @@ function bufferToArray(buffer, types) {
     }
     return ret;
 };
-// ******************** TEST: BUFFER RO ARRAY *********************
-const PackageSize = 10*1024*1024;
-var types = ['float32', 'int16', 'float64', 'bool'];
+
+// Non-Object alternative
+function bufferToArray2(buffer, types) {
+    let buf_byte_length = buffer.byteLength;
+    let seq_byte_length = 0;
+    let seq_byte_order = [];
+
+    let offset = 0;
+    let row = 0;
+    let col = 0;
+    const tmp_view = new DataView( buffer );
+    let ret = [];
+
+    while (offset < buf_byte_length) {
+      ret.push([]);
+      for (col = 0; col < types.length; col++) {
+        ret[row].push( DATA_TYPES[types[col]].get.call(tmp_view, offset) );
+        offset += DATA_TYPES[types[col]].bytes;
+      }
+      row++;
+    }
+    return ret;
+};
+// ******************** TEST: BUFFER TO ARRAY *********************
+const PackageSize = 20*1024*1024;
+var types = ['float32', 'int16', 'float64'];
 
 // Set a Buffer
 let seq_byte_length = 0;
@@ -260,18 +329,46 @@ while (offset < buf_byte_length) {
   row++;
 }
 
-// Transform to Array
+// Transform to Array using Object
 var dv = new ExtendedDataView(buffer);
 dv.addSequenceTypes(types);
+
+//Transform to Array using Function
 time_start = process.hrtime();
-let arr = dv.toArray();
+let arr1 = bufferToArray(buffer, types);
 time_diff = process.hrtime(time_start);
-console.log(time_diff, arr.length);
+console.log(time_diff, arr1.length);
+arr1.length = 0;
+
+// Transform to Array using alternative Function
 time_start = process.hrtime();
-let arr2 = dv.toArray2();
+let arr2 = bufferToArray2(buffer, types);
 time_diff = process.hrtime(time_start);
+// console.log(arr3);
 console.log(time_diff, arr2.length);
+arr2.length = 0;
+
 time_start = process.hrtime();
-let arr3 = bufferToArray(buffer, types);
+let arr3 = dv.toArray();
 time_diff = process.hrtime(time_start);
+// console.log(arr);
 console.log(time_diff, arr3.length);
+arr3.length = 0;
+
+time_start = process.hrtime();
+let arr4 = dv.toArray2();
+time_diff = process.hrtime(time_start);
+console.log(time_diff, arr4.length);
+arr4.length = 0;
+
+time_start = process.hrtime();
+let arr5 = dv.toArray3(buffer);
+time_diff = process.hrtime(time_start);
+console.log(time_diff, arr5.length);
+arr5.length = 0;
+
+time_start = process.hrtime();
+let arr6 = dv.toArray4(buffer);
+time_diff = process.hrtime(time_start);
+console.log(time_diff, arr6.length);
+arr6.length = 0;
