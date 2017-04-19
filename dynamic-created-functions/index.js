@@ -176,7 +176,7 @@ class ExtendedDataView {
     let tmp_view = new DataView(buffer, byteOffset, byteLength);
     let splitFn = this.getSplitSequenceFnDyn(this.getter, this.sequenceByteOrder);
     for (var offset = 0; offset < length; offset += this.sequenceByteLength) {
-      ret.push( splitFn(offset, tmp_view) );
+      ret.push.apply(ret, splitFn(offset, tmp_view) );
     }
     return ret;
   }
@@ -191,8 +191,8 @@ class ExtendedDataView {
 }
 
 // ******************** TEST: BUFFER TO ARRAY *********************
-const PackageSize = 20*1024*1024;
-var types = ['float32', 'int16', 'float64'];
+const PackageSize = 50*1024*1024;
+var types = ['float32', 'int16', 'float64', 'bool'];
 
 // Set a Buffer
 let seq_byte_length = 0;

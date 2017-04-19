@@ -291,8 +291,8 @@ function bufferToArray2(buffer, types) {
     return ret;
 };
 // ******************** TEST: BUFFER TO ARRAY *********************
-const PackageSize = 20*1024*1024;
-var types = ['float32', 'int16', 'float64'];
+const PackageSize = 50*1024*1024;
+var types = ['float32', 'int16', 'float64', 'bool'];
 
 // Set a Buffer
 let seq_byte_length = 0;
@@ -333,39 +333,39 @@ while (offset < buf_byte_length) {
 var dv = new ExtendedDataView(buffer);
 dv.addSequenceTypes(types);
 
-//Transform to Array using Function
-time_start = process.hrtime();
-let arr1 = bufferToArray(buffer, types);
-time_diff = process.hrtime(time_start);
-console.log(time_diff, arr1.length);
-arr1.length = 0;
-
-// Transform to Array using alternative Function
-time_start = process.hrtime();
-let arr2 = bufferToArray2(buffer, types);
-time_diff = process.hrtime(time_start);
-// console.log(arr3);
-console.log(time_diff, arr2.length);
-arr2.length = 0;
-
-time_start = process.hrtime();
-let arr3 = dv.toArray();
-time_diff = process.hrtime(time_start);
-// console.log(arr);
-console.log(time_diff, arr3.length);
-arr3.length = 0;
-
-time_start = process.hrtime();
-let arr4 = dv.toArray2();
-time_diff = process.hrtime(time_start);
-console.log(time_diff, arr4.length);
-arr4.length = 0;
-
-time_start = process.hrtime();
-let arr5 = dv.toArray3(buffer);
-time_diff = process.hrtime(time_start);
-console.log(time_diff, arr5.length);
-arr5.length = 0;
+// //Transform to Array using Function
+// time_start = process.hrtime();
+// let arr1 = bufferToArray(buffer, types);
+// time_diff = process.hrtime(time_start);
+// console.log(time_diff, arr1.length);
+// arr1.length = 0;
+//
+// // Transform to Array using alternative Function
+// time_start = process.hrtime();
+// let arr2 = bufferToArray2(buffer, types);
+// time_diff = process.hrtime(time_start);
+// // console.log(arr3);
+// console.log(time_diff, arr2.length);
+// arr2.length = 0;
+//
+// time_start = process.hrtime();
+// let arr3 = dv.toArray();
+// time_diff = process.hrtime(time_start);
+// // console.log(arr);
+// console.log(time_diff, arr3.length);
+// arr3.length = 0;
+//
+// time_start = process.hrtime();
+// let arr4 = dv.toArray2();
+// time_diff = process.hrtime(time_start);
+// console.log(time_diff, arr4.length);
+// arr4.length = 0;
+//
+// time_start = process.hrtime();
+// let arr5 = dv.toArray3(buffer);
+// time_diff = process.hrtime(time_start);
+// console.log(time_diff, arr5.length);
+// arr5.length = 0;
 
 time_start = process.hrtime();
 let arr6 = dv.toArray4(buffer);
