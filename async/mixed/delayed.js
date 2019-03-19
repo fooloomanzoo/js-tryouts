@@ -1,18 +1,8 @@
-const delayed = require('./delayed.js');
+const { performance } = require('perf_hooks');
 
-console.log('### Mixed async and syncronized excecutions ###');
-
-function delayedAsync(n, delay) {
-	for (let i = 1; i <= n; i++) {
-		delayed(delay).then(res => console.log(`delayedAsync ${i}/${n} ${res}ms/${delay}ms`));
-	}
+module.exports = async function(delay) {
+  const timestampStarted = performance.now();
+  return await new Promise((resolve) => {
+    setTimeout(() => resolve(performance.now() - timestampStarted), delay);
+  });
 }
-async function delayedSync(n, delay) {
-	for (let i = 1; i <= n; i++) {
-		await delayed(delay).then(res => console.log(`delayedSync ${i}/${n} ${res}ms/${delay}ms`));
-	}
-}
-delayedSync(10, 25)
-delayedAsync(10, 100)
-delayedAsync(10, 50)
-delayedAsync(10, 20)
