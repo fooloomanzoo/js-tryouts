@@ -1,0 +1,39 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`Basic Functionality Renders ClickCounter component correctly 1`] = `
+<h1
+  aria-label="counter"
+  aria-live="polite"
+  aria-relevant="text"
+  className="basic"
+  onKeyDown={[Function]}
+  onKeyUp={[Function]}
+  onMouseDown={[Function]}
+  onMouseUp={[Function]}
+  onTouchEnd={[Function]}
+  onTouchStart={[Function]}
+  tabIndex={0}
+>
+  Clicks: 
+  0
+</h1>
+`;
+
+exports[`basic renders ClickCounter component correctly 1`] = `
+<h1
+  aria-label="counter"
+  aria-live="polite"
+  aria-relevant="text"
+  className="basic"
+  onKeyDown={[Function]}
+  onKeyUp={[Function]}
+  onMouseDown={[Function]}
+  onMouseUp={[Function]}
+  onTouchEnd={[Function]}
+  onTouchStart={[Function]}
+  tabIndex={0}
+>
+  Clicks: 
+  0
+</h1>
+`;

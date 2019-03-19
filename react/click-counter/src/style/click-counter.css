@@ -1,0 +1,18 @@
+.basic {
+  user-select: none;
+  transition: opacity, color 0.2s linear;
+}
+
+.basic:focus {
+  outline-width: thin;
+}
+
+.basic:hover {
+  text-decoration: underline;
+}
+
+.active,
+.basic:active {
+  color: red;
+  opacity: 0.7;
+}

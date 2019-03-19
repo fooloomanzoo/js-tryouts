@@ -1,0 +1,12 @@
+{
+  "name": "float64array-to-string-performance",
+  "version": "1.0.0",
+  "description": "Test Casting Floats-Arrays (64-bit) to Strings Performance",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Johannes Brautzsch",
+  "license": "MIT"
+}
