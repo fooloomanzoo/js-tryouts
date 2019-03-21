@@ -1,20 +1,6 @@
 const s = 'ababac'
 
 /**
- * [findSubStringCount description]
- * @param  {String} str        [description]
- * @param  {String} cmp        [description]
- * @param  {Number} [offset=0] [description]
- * @return {Number}            [description]
- */
-function findSubStringCount(str, cmp, offset = 0) {
-  if (!str || !cmp) {
-    return 0;
-  }
-  return findSubStringRecursive(str, cmp, offset, 0);
-}
-
-/**
  * [findSubStringRecursive description]
  * @param  {[type]} str   [description]
  * @param  {[type]} cmp   [description]
