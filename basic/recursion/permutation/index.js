@@ -7,24 +7,24 @@ function solution(A, B) {
 }
 
 function permute(A, B, s, S) {
+  if (S.length > 0) {
+    return;
+  }
   if (A === 0 && B === 0) {
     S.push(s);
     return;
   }
-  if (S.length > 0) {
-    return;
-  }
-  if (s.length < 2 || (s[s.length - 1] !== s[s.length - 2])) {
+  if (s.length > 2 && s[s.length - 1] === s[s.length - 2]) {
+    if (s[s.length - 1] === 'b' && A > 0) {
+      permute(A-1, B, s + 'a', S);
+    } else if (s[s.length - 1] === 'a' && B > 0) {
+      permute(A, B-1, s + 'b', S);
+    }
+  } else {
     if (A > 0) {
       permute(A-1, B, s + 'a', S);
     }
     if (B > 0) {
-      permute(A, B-1, s + 'b', S);
-    }
-  } else if (s[s.length - 1] === s[s.length - 2]) {
-    if (s[s.length - 1] === 'b' && A > 0) {
-      permute(A-1, B, s + 'a', S);
-    } else if (s[s.length - 1] === 'a' && B > 0) {
       permute(A, B-1, s + 'b', S);
     }
   }
