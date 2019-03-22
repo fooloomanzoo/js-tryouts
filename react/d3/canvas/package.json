@@ -1,0 +1,32 @@
+{
+  "name": "react-canvas",
+  "version": "1.0.0",
+  "description": "A component to render a chart to a canvas using d3.js",
+  "main": "src/List.jsx",
+  "scripts": {
+    "start": "webpack-dev-server --mode development --config webpack.dev.js --open",
+    "build": "webpack --mode production --config webpack.prod.js",
+    "test": "jest"
+  },
+  "author": "fooloomanzoo",
+  "license": "MIT",
+  "devDependencies": {
+    "@babel/core": "^7.4.0",
+    "@babel/plugin-proposal-class-properties": "^7.4.0",
+    "@babel/preset-env": "^7.4.2",
+    "@babel/preset-react": "^7.0.0",
+    "babel-loader": "^8.0.5",
+    "babel-preset-minify": "^0.5.0",
+    "html-webpack-plugin": "^3.2.0",
+    "jest": "^24.5.0",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.2.1"
+  },
+  "dependencies": {
+    "d3-scale": "^3.0.0",
+    "d3-shape": "^1.3.5",
+    "react": "^16.8.4",
+    "react-dom": "^16.8.4"
+  }
+}
