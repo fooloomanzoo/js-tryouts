@@ -1,4 +1,3 @@
-import webpack from 'webpack';
 const path = require('path');
 
 module.exports = {
@@ -18,12 +17,18 @@ module.exports = {
       }
     ]
   },
-  plugins: [
-    new webpack.optimize.CommonsChunkPlugin({
-      names: ['list', 'react'],
-      minChunks: 2,
-    })
-  ],
+  optimization: {
+    splitChunks: {
+      cacheGroups: {
+        vendor: {
+          test: /react/,
+          chunks: "initial",
+          name: "vendor",
+          enforce: true
+        }
+      }
+    }
+  },
   resolve: {
     modules: ['node_modules']
   }

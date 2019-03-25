@@ -1,8 +1,8 @@
 import React, { Component } from "react";
-import curveLinear from "d3-shape/src/curve/linear.js";
 import scaleTime from "d3-scale/src/time.js";
 import scaleLinear from "d3-scale/src/linear.js";
-import extent from "d3-array/src/extent.js";
+import curveLinear from "./line/linear.js";
+import line from "./line/line.js";
 
 export default class UpdatableChart extends Component {
 
