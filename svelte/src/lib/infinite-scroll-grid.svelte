@@ -1,251 +1,349 @@
 <script lang="ts">
-  import { onMount, tick } from "svelte";
+	import { tick } from 'svelte';
 
-  let container: HTMLElement;
-  let before: HTMLElement;
-  let middle: HTMLElement;
-  let after: HTMLElement;
-  let offset = $state(0);
-  let rowCount = $state(6);
-  let columnCount = $state(7);
-  let columnStartOffset = $state(-2);
-  let beforeOffset = $state(3);
-  let afterOffset = $state(3);
-  let orientation = $state<"vertical" | "horizontal">("vertical");
+	let container: HTMLElement;
+	let nodes = $state<
+		Partial<Record<'before' | 'middle' | 'after', HTMLElement>>
+	>({});
+	let offset = $state(0);
+	let minOffset = $state(0);
+	let maxOffset = $state(Number.MAX_SAFE_INTEGER);
+	let rowCount = $state(6);
+	let columnCount = $state(7);
+	let columnStartOffset = $state(-2);
+	let renderOffset = $state(3);
+	let threshold = $state(0.5);
 
-  onMount(() => {
-    const startCell = middle.querySelector("[role='gridcell']:first-child");
+	let orientation = $state<'vertical' | 'horizontal'>('vertical');
 
-    if (!startCell) return;
+	$effect(() => {
+		nodes.middle?.scrollIntoView(
+			orientation === 'vertical'
+				? { block: 'start' }
+				: { inline: 'start' },
+		);
+	});
 
-    startCell.scrollIntoView({ block: "start" });
-  });
+	let onScroll = () => {
+		if (!container || !nodes.middle || !nodes.before) return;
 
-  $effect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
+		const yCount = orientation === 'vertical' ? rowCount : columnCount;
+		const xCount = orientation === 'vertical' ? columnCount : rowCount;
 
-        const startCell = middle.querySelector<HTMLElement>(
-          "[role='gridcell']:first-child"
-        );
+		const itemGap =
+			(container.offsetHeight * xCount - container.offsetWidth * yCount) /
+			(yCount - xCount);
+		const itemSize =
+			(container.offsetHeight * (xCount - 1) -
+				container.offsetWidth * (yCount - 1)) /
+			(xCount - yCount);
 
-        if (!startCell) return;
+		if (orientation === 'vertical') {
+			const delta =
+				(container.scrollTop - nodes.middle.clientTop) /
+				(itemSize + itemGap);
 
-        const scrollTop =
-          startCell.offsetTop - container.offsetTop + container.scrollTop;
-        offset -= beforeOffset;
+			if (delta < threshold) {
+				const scrollTo =
+					container.scrollTop +
+					nodes.middle.offsetTop -
+					container.offsetTop;
 
-        // Maintain scroll position after adding the new item
-        tick().then(() => {
-          container.scrollTop = scrollTop;
-        });
-      },
-      { root: container, threshold: 0.5 }
-    );
+				console.log('before', { delta, itemGap, itemSize, scrollTo });
+				offset -= renderOffset;
 
-    const firstCell = before.querySelector("[role='gridcell']:first-child");
+				// Maintain scroll position after adding the new item
+				tick().then(() => {
+					container.scrollTop = scrollTo;
+				});
+			} else if (delta > 2 * renderOffset + rowCount - threshold) {
+				console.log('after', { delta, itemGap, itemSize });
+			}
 
-    if (firstCell) {
-      observer.observe(firstCell);
-    }
-    return () => observer.disconnect();
-  });
+			console.log({ delta });
+		}
+	};
 
-  $effect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
+	// $effect(() => {
+	// 	const observer = new IntersectionObserver(
+	// 		([entry]) => {
+	// 			if (!entry.isIntersecting) return;
 
-        const startCell = middle.querySelector<HTMLElement>(
-          "[role='gridcell']:first-child"
-        );
-        if (!startCell) return;
+	// 			if (!nodes.middle || !nodes.before) return;
 
-        const scrollTop =
-          startCell.offsetTop -
-          container.offsetTop +
-          container.scrollTop +
-          container.clientHeight -
-          container.scrollHeight;
+	// 			let scrollTo: number;
 
-        offset += afterOffset;
+	// 			if (orientation === 'vertical') {
+	// 				scrollTo =
+	// 					container.scrollTop +
+	// 					nodes.middle.offsetTop -
+	// 					nodes.before.offsetTop;
+	// 			} else {
+	// 				scrollTo =
+	// 					container.scrollLeft +
+	// 					nodes.middle.offsetLeft -
+	// 					nodes.before.offsetLeft;
+	// 			}
 
-        // Maintain scroll position after adding the new item
-        tick().then(() => {
-          container.scrollTop = scrollTop;
-        });
-      },
-      { root: container, threshold: 0.5 }
-    );
+	// 			offset -= renderOffset;
 
-    const lastCell = after.querySelector(
-      "[role='row']:last-child > [role='gridcell']:last-child"
-    );
+	// 			// Maintain scroll position after adding the new item
+	// 			tick().then(() => {
+	// 				if (orientation === 'vertical') {
+	// 					container.scrollTop = scrollTo;
+	// 				} else {
+	// 					container.scrollLeft = scrollTo;
+	// 				}
+	// 			});
+	// 		},
+	// 		{ root: container, threshold },
+	// 	);
 
-    if (lastCell) {
-      observer.observe(lastCell);
-    }
+	// 	if (nodes.before) {
+	// 		observer.observe(nodes.before);
+	// 	}
 
-    return () => observer.disconnect();
-  });
+	// 	return () => observer.disconnect();
+	// });
+
+	// $effect(() => {
+	// 	$inspect(orientation);
+
+	// 	const observer = new IntersectionObserver(
+	// 		([entry]) => {
+	// 			if (!entry.isIntersecting) return;
+
+	// 			if (!nodes.middle || !nodes.after) return;
+
+	// 			let scrollTo: number;
+
+	// 			if (orientation === 'vertical') {
+	// 				scrollTo =
+	// 					container.scrollTop +
+	// 					nodes.middle.offsetTop +
+	// 					container.clientHeight -
+	// 					(nodes.after.offsetTop + nodes.after.offsetHeight);
+	// 			} else {
+	// 				scrollTo =
+	// 					container.scrollLeft +
+	// 					nodes.middle.offsetLeft +
+	// 					container.clientWidth -
+	// 					(nodes.after.offsetLeft + nodes.after.offsetWidth);
+	// 			}
+
+	// 			offset += renderOffset;
+
+	// 			// Maintain scroll position after adding the new item
+	// 			tick().then(() => {
+	// 				if (orientation === 'vertical') {
+	// 					container.scrollTop = scrollTo;
+	// 				} else {
+	// 					container.scrollLeft = scrollTo;
+	// 				}
+	// 			});
+	// 		},
+	// 		{ root: container, threshold },
+	// 	);
+
+	// 	if (nodes.after) {
+	// 		observer.observe(nodes.after);
+	// 	}
+
+	// 	return () => observer.disconnect();
+	// });
 </script>
 
 <div class="controls">
-  <label>
-    <input type="range" min="1" max="10" bind:value={rowCount} />
-    Row Count: {rowCount}
-  </label>
+	<label>
+		<input type="range" min="1" max="10" bind:value={rowCount} />
+		Row Count: {rowCount}
+	</label>
 
-  <label>
-    <input type="range" min="1" max="10" bind:value={columnCount} />
-    Column Count: {columnCount}
-  </label>
+	<label>
+		<input type="range" min="1" max="10" bind:value={columnCount} />
+		Column Count: {columnCount}
+	</label>
 
-  <select bind:value={orientation}>
-    <option value="vertical">Vertical</option>
-    <option value="horizontal">Horizontal</option>
-  </select>
+	<select bind:value={orientation}>
+		<option value="vertical">Vertical</option>
+		<option value="horizontal">Horizontal</option>
+	</select>
 </div>
 
 <div class="controls">
-  <label>
-    <input
-      type="range"
-      min={-columnCount}
-      max={columnCount}
-      bind:value={columnStartOffset}
-    />
-    Start Index: {columnStartOffset}
-  </label>
+	<label>
+		<input
+			type="range"
+			min={-columnCount}
+			max={columnCount}
+			bind:value={columnStartOffset}
+		/>
+		Start Index: {columnStartOffset}
+	</label>
 
-  <label>
-    <input type="range" min="1" max="50" bind:value={beforeOffset} />
-    Before Offset: {beforeOffset}
-  </label>
+	<label>
+		<input
+			type="number"
+			min="0"
+			max={Number.MAX_SAFE_INTEGER}
+			bind:value={minOffset}
+		/>
+		Min Offset: {minOffset}
+	</label>
 
-  <label>
-    <input type="range" min="1" max="50" bind:value={afterOffset} />
-    After Offset: {afterOffset}
-  </label>
+	<label>
+		<input
+			type="number"
+			min="0"
+			max={Number.MAX_SAFE_INTEGER}
+			bind:value={maxOffset}
+		/>
+		Max Offset: {maxOffset}
+	</label>
 </div>
+
+{#snippet line(rowIndex: number, bind?: 'before' | 'middle' | 'after')}
+	<div role="row">
+		{#each { length: columnCount }, columnIndex}
+			{@const index =
+				rowIndex * columnCount + (columnIndex + columnStartOffset + 1)}
+			{#if bind && columnIndex === 0}
+				<div role="gridcell" bind:this={nodes[bind]}>
+					{index}
+				</div>
+			{:else}
+				<div role="gridcell">
+					{index}
+				</div>
+			{/if}
+		{/each}
+	</div>
+{/snippet}
 
 <!-- svelte-ignore a11y_role_supports_aria_props -->
 <div
-  bind:this={container}
-  aria-orientation={orientation}
-  role="grid"
-  style={`--row-count: ${rowCount};--column-count: ${columnCount};`}
+	bind:this={container}
+	aria-orientation={orientation}
+	role="grid"
+	style={`--row-count: ${rowCount};--column-count: ${columnCount};`}
+	onscroll={onScroll}
 >
-  {#key "before"}
-    <div role="rowgroup" bind:this={before}>
-      {#each { length: beforeOffset }, i}
-        <div role="row">
-          {#each { length: columnCount }, j}
-            <div role="gridcell">
-              {(offset + i - beforeOffset) * columnCount +
-                j +
-                columnStartOffset +
-                1}
-            </div>
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {/key}
+	{#if minOffset - offset > 0}
+		<div
+			role="presentation"
+			style={`--row-count: ${Math.max(0, minOffset - offset)};`}
+		></div>
+		{#key 'before'}
+			{@render line(offset - 1)}
+		{/key}
+	{/if}
 
-  {#key "middle"}
-    <div role="rowgroup" class="middle" bind:this={middle}>
-      {#each { length: rowCount }, i}
-        <div role="row">
-          {#each { length: columnCount }, j}
-            <div role="gridcell">
-              {(offset + i) * columnCount + j + columnStartOffset + 1}
-            </div>
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {/key}
+	{#key 'middle'}
+		<div role="rowgroup">
+			{#each { length: rowCount }, i}
+				{@render line(offset + i, i === 0 ? 'middle' : undefined)}
+			{/each}
+		</div>
+	{/key}
 
-  {#key "after"}
-    <div role="rowgroup" bind:this={after}>
-      {#each { length: afterOffset }, i}
-        <div role="row">
-          {#each { length: columnCount }, j}
-            <div role="gridcell">
-              {(offset + rowCount + i) * columnCount +
-                j +
-                columnStartOffset +
-                1}
-            </div>
-          {/each}
-        </div>
-      {/each}
-    </div>
-  {/key}
+	<!-- {@render line(offset + rowCount)} -->
+
+	{#key 'after'}
+		<div role="rowgroup">
+			{#each { length: renderOffset }, i}
+				{@render line(
+					offset + rowCount + i,
+					i === renderOffset - 1 ? 'after' : undefined,
+				)}
+			{/each}
+		</div>
+	{/key}
 </div>
 
 <style>
-  .controls {
-    display: flex;
-    flex-flow: row wrap;
-    gap: 3rem;
-    justify-content: start;
+	.controls {
+		display: flex;
+		flex-flow: row wrap;
+		gap: 3rem;
+		justify-content: start;
 
-    box-sizing: border-box;
-    padding: 1rem;
-    width: 100%;
-  }
+		box-sizing: border-box;
+		padding: 1rem;
+		width: 100%;
+	}
 
-  [role="grid"] {
-    --item-size: 6rem;
-    --gap: 1rem;
+	[role='grid'] {
+		--item-size: 6rem;
+		--gap: 1rem;
 
-    display: grid;
-    grid-auto-flow: row;
-    grid-template-rows: unset;
-    grid-template-columns: repeat(auto-fill, var(--item-size));
-    grid-auto-rows: var(--item-size);
-    grid-auto-columns: var(--item-size);
-    width: max-content;
-    gap: var(--gap);
+		display: grid;
+		grid-auto-flow: row;
+		grid-template-rows: unset;
+		grid-template-columns: repeat(var(--column-count), var(--item-size));
+		gap: var(--gap);
 
-    overflow-y: auto;
-    height: calc(
-      (var(--item-size) + var(--gap)) * var(--row-count) - var(--gap)
-    );
-    width: calc(
-      (var(--item-size) + var(--gap)) * var(--column-count) - var(--gap)
-    );
-    margin: 2rem auto;
-  }
-  [role="grid"][aria-orientation="horizontal"] {
-    grid-auto-flow: column;
-    grid-template-columns: unset;
-    grid-template-rows: repeat(auto-fill, var(--item-size));
+		height: calc(
+			(var(--item-size) + var(--gap)) * var(--row-count) - var(--gap)
+		);
+		width: calc(
+			(var(--item-size) + var(--gap)) * var(--column-count) - var(--gap)
+		);
 
-    overflow-y: hidden;
-    overflow-x: auto;
-  }
+		box-sizing: border-box;
+		margin: 2rem auto;
 
-  [role="rowgroup"],
-  [role="row"] {
-    display: contents;
-  }
+		overflow-y: auto;
+		overflow-y: overlay;
+		scrollbar-gutter: stable;
+	}
 
-  .middle > [role="row"]:first-child > [role="gridcell"]:first-child {
-    background: hsla(0, 50%, 50%, 0.1);
-  }
+	[role='grid'][aria-orientation='horizontal'] {
+		grid-auto-flow: column;
+		grid-template-columns: unset;
+		grid-template-rows: repeat(var(--column-count), var(--item-size));
 
-  [role="gridcell"] {
-    box-sizing: border-box;
-    width: var(--item-size);
-    aspect-ratio: 1 / 1;
-    padding: 0.75rem;
+		width: calc(
+			(var(--item-size) + var(--gap)) * var(--row-count) - var(--gap)
+		);
+		height: calc(
+			(var(--item-size) + var(--gap)) * var(--column-count) - var(--gap)
+		);
 
-    background-color: hsla(0, 0%, 50%, 0.1);
+		overflow-y: hidden;
+		overflow-x: auto;
 
-    font-size: 1.5rem;
-  }
+		scroll-snap-type: x proximity;
+	}
+
+	[role='grid'] > [role='presentation']:first-child {
+		grid-column: 1 / -1;
+		height: calc(
+			(var(--item-size) + var(--gap)) * var(--row-count) - var(--gap)
+		);
+	}
+
+	[role='rowgroup'],
+	[role='row'] {
+		display: contents;
+	}
+
+	[role='rowgroup']
+		> [role='row']:first-child
+		> [role='gridcell']:first-child {
+		background-color: hsla(0, 50%, 50%, 0.1);
+	}
+	[role='rowgroup'] > [role='row']:last-child > [role='gridcell']:last-child {
+		background-color: hsla(180, 50%, 50%, 0.1);
+	}
+
+	[role='gridcell'] {
+		box-sizing: border-box;
+		width: var(--item-size);
+		aspect-ratio: 1 / 1;
+		padding: 0.75rem;
+
+		background-color: hsla(0, 0%, 50%, 0.1);
+
+		font-size: 1.5rem;
+	}
 </style>
