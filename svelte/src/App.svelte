@@ -1,26 +1,26 @@
 <script lang="ts">
 	import AddToTop from './lib/add-to-top.svelte';
-	import ScrollGrid1 from './lib/interseption-infinite-scroll-grid-table.svelte';
+	import ScrollGrid1 from './lib/interseption-infinite-scroll-grid.svelte';
 	import ScrollGrid2 from './lib/interseption-infinite-scroll-grid-horizontal-vertical.svelte';
 	import ScrollGrid3 from './lib/infinite-scroll-grid.svelte';
 
 	const routes = [
 		'add-to-top',
-		'interseption-infinite-scroll-grid-table',
+		'interseption-infinite-scroll-grid',
 		'interseption-infinite-scroll-grid-horizontal-vertical',
 		'infinite-scroll-grid',
 	] as const;
 	const labels = {
 		'add-to-top': 'Add to Top',
-		'interseption-infinite-scroll-grid-table':
-			'Interseption Infinite Scroll Grid (Table)',
+		'interseption-infinite-scroll-grid':
+			'Interseption Infinite Scroll Grid',
 		'interseption-infinite-scroll-grid-horizontal-vertical':
 			'Interseption Infinite Scroll Grid (Horizontal/Vertical)',
 		'infinite-scroll-grid': 'Infinite Scroll Grid',
 	} as const;
 	const pages = {
 		'add-to-top': AddToTop,
-		'interseption-infinite-scroll-grid-table': ScrollGrid1,
+		'interseption-infinite-scroll-grid': ScrollGrid1,
 		'interseption-infinite-scroll-grid-horizontal-vertical': ScrollGrid2,
 		'infinite-scroll-grid': ScrollGrid3,
 	} as const;

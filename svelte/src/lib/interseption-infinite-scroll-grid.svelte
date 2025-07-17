@@ -210,7 +210,7 @@
 		display: grid;
 		grid-auto-flow: row;
 		grid-template-rows: unset;
-		grid-template-columns: repeat(auto-fill, var(--item-size));
+		grid-template-columns: repeat(var(--column-count), var(--item-size));
 		grid-auto-rows: var(--item-size);
 		grid-auto-columns: var(--item-size);
 		width: max-content;
@@ -220,10 +220,9 @@
 		height: calc(
 			(var(--item-size) + var(--gap)) * var(--row-count) - var(--gap)
 		);
-		width: calc(
-			(var(--item-size) + var(--gap)) * var(--column-count) - var(--gap)
-		);
+		width: max-content;
 		margin: 2rem auto;
+		box-sizing: border-box;
 	}
 
 	[role='rowgroup'],
